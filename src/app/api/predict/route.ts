@@ -112,8 +112,9 @@ export async function GET(req: Request) {
     }
   } catch {}
 
-  // checkout target branch
+  // fetch all branches so the requested ref is available locally, then check it out
   try {
+    await git.raw(["fetch", "origin", `${branch}:${branch}`]).catch(() => undefined);
     await checkout(git, branch);
   } catch (e: any) {
     return NextResponse.json({ error: `cannot checkout '${branch}': ${e?.message || e}` }, { status: 400 });

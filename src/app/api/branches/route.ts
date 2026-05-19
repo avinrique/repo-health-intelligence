@@ -10,10 +10,16 @@ export async function GET() {
   if (!repo) return NextResponse.json({ branches: [], current: null });
   try {
     const { git } = await cloneOrOpen(repo.url, repo.branch);
-    await git.fetch().catch(() => undefined);
-    const out = await git.raw(["for-each-ref", "--format=%(refname:short)", "refs/heads/"]);
-    const branches = out.split("\n").map((b) => b.trim()).filter(Boolean);
-    return NextResponse.json({ branches, current: repo.branch });
+    // Pull all remote branches so we know what's available to predict against.
+    const out = await git.raw(["ls-remote", "--heads", repo.url]);
+    const remote = out
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.split(/\s+/)[1])
+      .filter((r) => r && r.startsWith("refs/heads/"))
+      .map((r) => r.replace("refs/heads/", ""));
+    return NextResponse.json({ branches: remote, current: repo.branch });
   } catch (e: any) {
     return NextResponse.json({ branches: [], current: repo.branch, error: e?.message });
   }
