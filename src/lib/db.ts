@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS scores (
   test_coverage REAL NOT NULL,
   hotspot_risk REAL NOT NULL,
   dependency_rot REAL NOT NULL,
+  arch_drift REAL NOT NULL DEFAULT 0,
   total_files INTEGER NOT NULL,
   total_loc INTEGER NOT NULL,
   total_complexity INTEGER NOT NULL,
@@ -50,6 +51,11 @@ CREATE TABLE IF NOT EXISTS scores (
   source_files INTEGER NOT NULL,
   num_deps INTEGER NOT NULL,
   commits_since_deps_change INTEGER NOT NULL,
+  num_orphans INTEGER NOT NULL DEFAULT 0,
+  num_cycles INTEGER NOT NULL DEFAULT 0,
+  mean_fan_in REAL NOT NULL DEFAULT 0,
+  mean_fan_out REAL NOT NULL DEFAULT 0,
+  bus_factor_low INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (sha) REFERENCES commits(sha)
 );
 
@@ -85,6 +91,41 @@ CREATE TABLE IF NOT EXISTS edges (
   PRIMARY KEY (sha, src, dst, kind)
 );
 CREATE INDEX IF NOT EXISTS idx_edges_sha ON edges(sha);
+
+CREATE TABLE IF NOT EXISTS file_authors (
+  sha TEXT NOT NULL,
+  path TEXT NOT NULL,
+  author TEXT NOT NULL,
+  commits INTEGER NOT NULL,
+  PRIMARY KEY (sha, path, author)
+);
+CREATE INDEX IF NOT EXISTS idx_fa_sha_path ON file_authors(sha, path);
+
+CREATE TABLE IF NOT EXISTS bus_factor (
+  sha TEXT NOT NULL,
+  path TEXT NOT NULL,
+  factor INTEGER NOT NULL,        -- min # of authors who together own >50% of commits
+  top_share REAL NOT NULL,        -- share of top author (0..1)
+  total_commits INTEGER NOT NULL,
+  PRIMARY KEY (sha, path)
+);
+CREATE INDEX IF NOT EXISTS idx_bf_sha ON bus_factor(sha);
+
+CREATE TABLE IF NOT EXISTS cycles (
+  sha TEXT NOT NULL,
+  cycle_id INTEGER NOT NULL,
+  member TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  PRIMARY KEY (sha, cycle_id, member)
+);
+CREATE INDEX IF NOT EXISTS idx_cycles_sha ON cycles(sha);
+
+CREATE TABLE IF NOT EXISTS orphans (
+  sha TEXT NOT NULL,
+  path TEXT NOT NULL,
+  PRIMARY KEY (sha, path)
+);
+CREATE INDEX IF NOT EXISTS idx_orphans_sha ON orphans(sha);
 
 CREATE TABLE IF NOT EXISTS narratives (
   sha TEXT NOT NULL,

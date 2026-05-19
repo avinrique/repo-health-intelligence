@@ -5,10 +5,17 @@ import SubscoreChart from "./SubscoreChart";
 import Hotspots from "./Hotspots";
 import GraphDiff from "./GraphDiff";
 import ExplainPanel from "./ExplainPanel";
+import BusFactorPanel from "./BusFactorPanel";
+import ArchPanel from "./ArchPanel";
+import PredictPanel from "./PredictPanel";
+import GraphView from "./GraphView";
+
+type TabKey = "hotspots" | "busfactor" | "arch" | "predict" | "graph" | "diff";
 
 interface ScoreRow {
   sha: string; idx: number; ts: number; author: string; message: string;
   health: number; complexity_drift: number; test_coverage: number; hotspot_risk: number; dependency_rot: number;
+  arch_drift?: number; num_orphans?: number; num_cycles?: number; bus_factor_low?: number;
   total_files: number; total_loc: number; total_complexity: number;
 }
 
@@ -24,6 +31,7 @@ export default function Dashboard() {
   const [compareWith, setCompareWith] = useState<string | null>(null);
   const [hotspots, setHotspots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<TabKey>("hotspots");
 
   useEffect(() => {
     (async () => {
@@ -130,21 +138,38 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <h2 className="text-sm font-medium text-zinc-300 mb-2">Hotspots at selected commit</h2>
-          <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-3">
-            <Hotspots data={hotspots} />
-          </div>
+      <section>
+        <div className="flex items-center gap-1 border-b border-zinc-800 mb-3">
+          {([
+            ["hotspots", "Hotspots"],
+            ["busfactor", "Bus factor"],
+            ["arch", "Architecture"],
+            ["predict", "Predict PR"],
+            ["graph", "Knowledge graph"],
+            ["diff", "Graph diff"],
+          ] as [TabKey, string][]).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={`px-3 py-1.5 text-xs border-b-2 -mb-px ${tab === k ? "border-emerald-400 text-emerald-300" : "border-transparent text-zinc-400 hover:text-zinc-200"}`}
+            >
+              {label}
+            </button>
+          ))}
+          {tab === "diff" && (
+            <div className="ml-auto">
+              <CompareSelector series={series} value={compareWith} onChange={setCompareWith} />
+            </div>
+          )}
         </div>
-        <div>
-          <div className="flex items-baseline justify-between mb-2">
-            <h2 className="text-sm font-medium text-zinc-300">Graph diff</h2>
-            <CompareSelector series={series} value={compareWith} onChange={setCompareWith} />
-          </div>
-          <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-3">
-            {compareWith && selected && <GraphDiff a={compareWith} b={selected} />}
-          </div>
+
+        <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-4">
+          {tab === "hotspots" && <Hotspots data={hotspots} />}
+          {tab === "busfactor" && selected && <BusFactorPanel sha={selected} />}
+          {tab === "arch" && selected && <ArchPanel sha={selected} />}
+          {tab === "predict" && <PredictPanel />}
+          {tab === "graph" && selected && <GraphView sha={selected} />}
+          {tab === "diff" && compareWith && selected && <GraphDiff a={compareWith} b={selected} />}
         </div>
       </section>
     </div>

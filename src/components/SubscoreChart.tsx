@@ -8,6 +8,7 @@ interface Point {
   test_coverage: number;
   hotspot_risk: number;
   dependency_rot: number;
+  arch_drift?: number;
 }
 
 export default function SubscoreChart({ series }: { series: Point[] }) {
@@ -27,6 +28,7 @@ export default function SubscoreChart({ series }: { series: Point[] }) {
           <Line dataKey="test_coverage"    stroke="#60a5fa" dot={false} name="test coverage" />
           <Line dataKey="hotspot_risk"     stroke="#ef4444" dot={false} name="hotspot risk" />
           <Line dataKey="dependency_rot"   stroke="#a78bfa" dot={false} name="dependency rot" />
+          <Line dataKey="arch_drift"       stroke="#f472b6" dot={false} name="arch drift" />
         </LineChart>
       </ResponsiveContainer>
     </div>

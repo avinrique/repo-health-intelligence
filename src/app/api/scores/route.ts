@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const rows = db().prepare(`
     SELECT c.sha, c.idx, c.ts, c.author, c.message,
-           s.health, s.complexity_drift, s.test_coverage, s.hotspot_risk, s.dependency_rot,
-           s.total_files, s.total_loc, s.total_complexity
+           s.health, s.complexity_drift, s.test_coverage, s.hotspot_risk, s.dependency_rot, s.arch_drift,
+           s.total_files, s.total_loc, s.total_complexity,
+           s.num_orphans, s.num_cycles, s.bus_factor_low
     FROM commits c JOIN scores s ON s.sha = c.sha
     ORDER BY c.idx ASC
   `).all() as any[];
