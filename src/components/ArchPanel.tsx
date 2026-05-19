@@ -13,6 +13,7 @@ export default function ArchPanel({ sha }: { sha: string }) {
   const [series, setSeries] = useState<ArchPoint[]>([]);
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [orphans, setOrphans] = useState<{ path: string }[]>([]);
+
   useEffect(() => {
     fetch(`/api/arch`).then((r) => r.json()).then((d) => setSeries(d.series || []));
   }, []);
@@ -24,46 +25,62 @@ export default function ArchPanel({ sha }: { sha: string }) {
   }, [sha]);
 
   return (
-    <div className="space-y-4">
-      <div className="h-[200px] bg-zinc-900/40 rounded-lg p-3 border border-zinc-800">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={series}>
-            <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-            <XAxis dataKey="idx" stroke="#71717a" tick={{ fontSize: 11 }} />
-            <YAxis stroke="#71717a" tick={{ fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: "#0a0a0c", border: "1px solid #3f3f46", borderRadius: 6, fontSize: 12 }} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Line dataKey="num_cycles" stroke="#f97316" dot={false} name="cycles" />
-            <Line dataKey="num_orphans" stroke="#a78bfa" dot={false} name="orphans" />
-            <Line dataKey="bus_factor_low" stroke="#ef4444" dot={false} name="bus-factor ≤1 files" />
-          </LineChart>
-        </ResponsiveContainer>
+    <div className="space-y-5">
+      <div>
+        <div className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)] mb-2">Topology over time</div>
+        <div className="h-[210px] -mx-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={series} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
+              <CartesianGrid stroke="#23233a" strokeDasharray="2 6" vertical={false} />
+              <XAxis dataKey="idx" tickLine={false} axisLine={false} />
+              <YAxis tickLine={false} axisLine={false} width={36} />
+              <Tooltip
+                cursor={{ stroke: "rgba(167,139,250,0.3)", strokeWidth: 1 }}
+                contentStyle={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 8, fontSize: 11 }}
+                labelStyle={{ color: "var(--text-muted)" }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-muted)", paddingTop: 4 }} iconType="plainline" />
+              <Line dataKey="num_cycles" stroke="#fbbf24" strokeWidth={1.5} dot={false} name="cycles" isAnimationActive={false} />
+              <Line dataKey="num_orphans" stroke="#67e8f9" strokeWidth={1.5} dot={false} name="orphans" isAnimationActive={false} />
+              <Line dataKey="bus_factor_low" stroke="#fb7185" strokeWidth={1.5} dot={false} name="bus-factor ≤ 1 files" isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 text-xs">
         <div>
-          <div className="text-zinc-300 mb-2 font-medium">Cycles at this commit ({cycles.length})</div>
-          <div className="space-y-1 max-h-56 overflow-auto pr-2">
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">Cycles at this commit</span>
+            <span className="text-[10px] text-[var(--text-faint)]">{cycles.length} total</span>
+          </div>
+          <div className="space-y-2 max-h-64 overflow-auto pr-1">
             {cycles.slice(0, 20).map((c) => (
-              <div key={c.id} className="border border-zinc-800 rounded p-1.5 bg-zinc-900/40">
-                <div className="text-zinc-400 mb-0.5">cycle #{c.id} · {c.size} files</div>
-                <div className="space-y-0 font-mono text-zinc-200">
-                  {c.members.slice(0, 6).map((m) => <div key={m} className="truncate">{m}</div>)}
-                  {c.members.length > 6 && <div className="text-zinc-600">+{c.members.length - 6} more</div>}
+              <div key={c.id} className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-2.5">
+                <div className="text-[10.5px] text-[var(--text-muted)] mb-1 flex justify-between">
+                  <span>cycle #{c.id}</span>
+                  <span>{c.size} files</span>
+                </div>
+                <div className="font-mono space-y-0.5">
+                  {c.members.slice(0, 6).map((m) => <div key={m} className="text-[12px] text-[var(--text)] truncate">↻ {m}</div>)}
+                  {c.members.length > 6 && <div className="text-[var(--text-faint)]">+{c.members.length - 6} more</div>}
                 </div>
               </div>
             ))}
-            {!cycles.length && <div className="text-zinc-600">No cycles detected.</div>}
+            {!cycles.length && <div className="text-[var(--text-faint)]">No cycles detected.</div>}
           </div>
         </div>
         <div>
-          <div className="text-zinc-300 mb-2 font-medium">Orphan files ({orphans.length}) <span className="text-zinc-500 font-normal">— no in/out internal imports</span></div>
-          <div className="space-y-0 font-mono max-h-56 overflow-auto pr-2">
-            {orphans.slice(0, 30).map((o) => (
-              <div key={o.path} className="text-zinc-300 truncate">{o.path}</div>
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">Orphan files</span>
+            <span className="text-[10px] text-[var(--text-faint)]">no in/out internal imports · {orphans.length} total</span>
+          </div>
+          <div className="font-mono space-y-0.5 max-h-64 overflow-auto pr-1">
+            {orphans.slice(0, 40).map((o) => (
+              <div key={o.path} className="text-[12px] text-[var(--text)] truncate py-0.5 px-1 rounded hover:bg-white/[0.025]">{o.path}</div>
             ))}
-            {orphans.length > 30 && <div className="text-zinc-600">+{orphans.length - 30} more</div>}
-            {!orphans.length && <div className="text-zinc-600">None.</div>}
+            {orphans.length > 40 && <div className="text-[var(--text-faint)]">+{orphans.length - 40} more</div>}
+            {!orphans.length && <div className="text-[var(--text-faint)]">None.</div>}
           </div>
         </div>
       </div>

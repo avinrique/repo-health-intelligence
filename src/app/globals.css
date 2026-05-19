@@ -4,9 +4,153 @@
 
 :root {
   color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #08080d;
+  --bg-elev: #0f0f17;
+  --surface: #13131e;
+  --surface-2: #1a1a28;
+  --border: #232336;
+  --border-strong: #34344e;
+
+  /* Text */
+  --text: #ededf4;
+  --text-muted: #8e8ea4;
+  --text-faint: #5d5d72;
+
+  /* Signature palette: violet + cyan dyad, used everywhere */
+  --primary: #a78bfa;        /* violet 400 */
+  --primary-dim: #7e6cd8;
+  --primary-soft: rgba(167, 139, 250, 0.15);
+
+  --accent: #67e8f9;         /* cyan 300 */
+  --accent-dim: #22d3ee;
+
+  --good: #34d399;           /* emerald 400 */
+  --warn: #fbbf24;           /* amber 400 */
+  --bad: #fb7185;            /* rose 400 */
 }
 
 html, body {
-  background: #0a0a0c;
-  color: #e8e8ea;
+  background: var(--bg);
+  color: var(--text);
+  font-feature-settings: "ss01", "cv11", "cv02", "tnum";
 }
+
+/* Ambient gradient mesh — distinctive backdrop without being noisy */
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: -2;
+  background:
+    radial-gradient(60rem 50rem at 10% -10%, rgba(167, 139, 250, 0.10), transparent 60%),
+    radial-gradient(50rem 40rem at 110% 10%, rgba(103, 232, 249, 0.07), transparent 60%),
+    radial-gradient(80rem 60rem at 50% 120%, rgba(167, 139, 250, 0.04), transparent 70%);
+  pointer-events: none;
+}
+
+/* Grid texture — extremely subtle, ties the panels together visually */
+body::after {
+  content: "";
+  position: fixed; inset: 0; z-index: -1;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Card primitive */
+.card {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg-elev) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 12px 32px -16px rgba(0, 0, 0, 0.5);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+.card-hover:hover { border-color: var(--border-strong); }
+
+.divider-glow {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+}
+
+.kbd {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* Brand mark gradient */
+.brand-mark {
+  background: conic-gradient(from 180deg, #a78bfa, #67e8f9, #a78bfa);
+  -webkit-mask: radial-gradient(circle, transparent 36%, black 38%, black 60%, transparent 62%),
+                radial-gradient(circle, black 0 100%);
+  -webkit-mask-composite: source-over;
+  mask-composite: add;
+}
+
+/* Tab pill */
+.tab-pill {
+  position: relative;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  transition: all 160ms ease;
+}
+.tab-pill:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.tab-pill.active {
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.15), rgba(103, 232, 249, 0.06));
+  border-color: rgba(167, 139, 250, 0.35);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.06), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* Subscore mini-bar */
+.score-track {
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  overflow: hidden;
+}
+.score-fill {
+  position: absolute; inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+/* Health pulse — for the live KPI */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(167,139,250,0); }
+}
+.health-pulse { animation: pulse-glow 2.4s ease-in-out infinite; }
+
+/* Recharts overrides — soften the default look */
+.recharts-cartesian-grid line { stroke: var(--border) !important; opacity: 0.5; }
+.recharts-cartesian-axis-tick text { fill: var(--text-faint) !important; font-size: 11px; }
+.recharts-default-tooltip {
+  background: var(--surface) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Selection */
+::selection { background: rgba(167, 139, 250, 0.3); }

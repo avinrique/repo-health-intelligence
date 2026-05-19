@@ -24,20 +24,28 @@ export default function GraphView({ sha }: { sha: string }) {
     if (!canvas || !layout) return;
     const ctx = canvas.getContext("2d")!;
     const w = canvas.width, h = canvas.height;
-    ctx.fillStyle = "#0a0a0c"; ctx.fillRect(0, 0, w, h);
-    // edges
-    ctx.strokeStyle = "rgba(115,115,135,0.35)"; ctx.lineWidth = 1;
+    // background
+    ctx.fillStyle = "#0f0f17"; ctx.fillRect(0, 0, w, h);
+    // edges with gentle gradient
+    ctx.lineWidth = 1;
     for (const e of layout.edges) {
+      ctx.strokeStyle = "rgba(167,139,250,0.18)";
       ctx.beginPath();
       ctx.moveTo(e.a.x, e.a.y);
       ctx.lineTo(e.b.x, e.b.y);
       ctx.stroke();
     }
-    // nodes
+    // nodes with subtle glow
     for (const n of layout.nodes) {
       const r = 2 + Math.min(8, Math.sqrt(Math.max(1, n.node.complexity)) * 0.8);
-      const hot = n.node.complexity > 60 ? "#ef4444" : n.node.complexity > 25 ? "#f59e0b" : "#22c55e";
-      ctx.fillStyle = hot;
+      const tone = n.node.complexity > 60 ? "#fb7185" : n.node.complexity > 25 ? "#fbbf24" : "#34d399";
+      // glow
+      const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 2.2);
+      grad.addColorStop(0, tone + "cc");
+      grad.addColorStop(1, tone + "00");
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(n.x, n.y, r * 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = tone;
       ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.fill();
     }
   }, [layout]);
@@ -57,27 +65,35 @@ export default function GraphView({ sha }: { sha: string }) {
   };
 
   return (
-    <div className="space-y-2">
-      <div className="text-zinc-500 text-xs">
-        {data ? `${data.nodes.length} nodes · ${data.edges.length} edges (file-level import graph)` : "Loading graph…"}
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">File-level import graph</span>
+        <span className="text-[11px] text-[var(--text-faint)] font-mono">
+          {data ? `${data.nodes.length} nodes · ${data.edges.length} edges` : "loading …"}
+        </span>
       </div>
-      <div className="relative bg-zinc-900/40 border border-zinc-800 rounded-lg overflow-hidden">
+      <div className="relative rounded-lg border border-[var(--border)] overflow-hidden">
         <canvas
           ref={ref}
           width={720}
           height={460}
-          className="w-full h-auto"
+          className="w-full h-auto block"
           onMouseMove={onMove}
           onMouseLeave={() => setHover(null)}
         />
         {hover && (
-          <div className="absolute top-2 left-2 bg-zinc-950/95 border border-zinc-700 rounded px-2 py-1 text-xs font-mono pointer-events-none max-w-[60%]">
-            <div className="text-zinc-200 truncate">{hover.path}</div>
-            <div className="text-zinc-500">loc {hover.loc} · cx {hover.complexity}</div>
+          <div className="absolute top-3 left-3 bg-[var(--surface)]/95 backdrop-blur border border-[var(--border-strong)] rounded-md px-2.5 py-1.5 text-xs font-mono pointer-events-none max-w-[70%] shadow-xl">
+            <div className="text-[var(--text)] truncate">{hover.path}</div>
+            <div className="text-[var(--text-muted)] text-[10.5px]">loc {hover.loc} · cx {hover.complexity}</div>
           </div>
         )}
       </div>
-      <div className="text-[11px] text-zinc-500">Node size ∝ √complexity. Color: green ≤25, amber 26-60, red &gt;60.</div>
+      <div className="text-[11px] text-[var(--text-faint)] flex items-center gap-4">
+        <span>Node size ∝ √complexity</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[var(--good)]" /> ≤ 25</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[var(--warn)]" /> 26 – 60</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[var(--bad)]" /> &gt; 60</span>
+      </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import BusFactorPanel from "./BusFactorPanel";
 import ArchPanel from "./ArchPanel";
 import PredictPanel from "./PredictPanel";
 import GraphView from "./GraphView";
+import BrandMark from "./BrandMark";
 
 type TabKey = "hotspots" | "busfactor" | "arch" | "predict" | "graph" | "diff";
 
@@ -20,8 +21,16 @@ interface ScoreRow {
 }
 
 interface Annotation { sha: string; idx: number; delta: number }
-
 interface RepoInfo { url: string; branch: string; ingested_at: number }
+
+const TABS: [TabKey, string, string][] = [
+  ["hotspots", "Hotspots", "where bugs live"],
+  ["busfactor", "Bus factor", "who owns what"],
+  ["arch", "Architecture", "cycles · orphans · fan-in"],
+  ["predict", "Predict", "simulate a branch merge"],
+  ["graph", "Knowledge graph", "import topology"],
+  ["diff", "Graph diff", "between any two commits"],
+];
 
 export default function Dashboard() {
   const [series, setSeries] = useState<ScoreRow[]>([]);
@@ -64,133 +73,198 @@ export default function Dashboard() {
 
   const latest = series[series.length - 1];
   const baseline = series[0];
+  const delta = latest && baseline ? latest.health - baseline.health : 0;
 
   if (loading) {
-    return <div className="p-6 text-zinc-400">Loading…</div>;
+    return (
+      <div className="min-h-screen grid place-items-center">
+        <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
+          <span className="w-2 h-2 rounded-full bg-[var(--primary)] health-pulse" />
+          loading repo health …
+        </div>
+      </div>
+    );
   }
   if (!series.length) {
     return (
-      <div className="p-6 max-w-2xl">
+      <div className="p-10 max-w-2xl">
         <h1 className="text-xl mb-2">No data yet</h1>
-        <p className="text-zinc-400 text-sm">Run the ingestion script first:</p>
-        <pre className="mt-2 bg-zinc-900 p-3 rounded text-xs overflow-x-auto">npm run ingest -- https://github.com/tarinagarwal/Edulume</pre>
+        <p className="text-[var(--text-muted)] text-sm">Run the ingestion script first:</p>
+        <pre className="mt-3 card p-3 text-xs font-mono">npm run ingest -- https://github.com/tarinagarwal/Edulume</pre>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-      <header className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Repo Health Intelligence</h1>
-          {repo && (
-            <div className="text-xs text-zinc-500 mt-0.5">
-              <a href={repo.url} target="_blank" className="hover:text-zinc-300 underline-offset-2 hover:underline">{repo.url}</a>
-              {" · "}{repo.branch} · {series.length} commits ingested
+    <div className="min-h-screen">
+      {/* Top bar */}
+      <header className="px-6 lg:px-8 pt-6 pb-4">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <BrandMark size={28} />
+            <div>
+              <div className="text-[15px] font-medium tracking-tight">Repo Health Intelligence</div>
+              {repo && (
+                <div className="text-[11.5px] text-[var(--text-muted)] mt-0.5 flex items-center gap-2 flex-wrap">
+                  <a
+                    href={repo.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono hover:text-[var(--text)] underline-offset-2 hover:underline"
+                  >
+                    {repo.url.replace(/^https?:\/\/(www\.)?github\.com\//, "")}
+                  </a>
+                  <span className="text-[var(--text-faint)]">·</span>
+                  <span className="font-mono">{repo.branch}</span>
+                  <span className="text-[var(--text-faint)]">·</span>
+                  <span>{series.length} commits</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        {latest && baseline && (
-          <div className="flex gap-3 text-xs">
-            <KPI label="Latest health" value={latest.health.toFixed(1)} accent="text-emerald-400" />
-            <KPI label="Δ vs first" value={`${(latest.health - baseline.health).toFixed(1)}`} accent={latest.health >= baseline.health ? "text-emerald-400" : "text-red-400"} />
-            <KPI label="Files" value={String(latest.total_files)} />
-            <KPI label="LOC" value={latest.total_loc.toLocaleString()} />
           </div>
-        )}
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="kbd">live</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--good)] health-pulse" />
+            <span className="text-[var(--text-muted)]">ingested {repo ? new Date(repo.ingested_at * 1000).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+          </div>
+        </div>
       </header>
 
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-medium text-zinc-300">Health over time</h2>
-          <div className="text-[11px] text-zinc-500">
-            {annotations.length} dip{annotations.length === 1 ? "" : "s"} (red dots) · click any point
+      {/* Hero KPIs */}
+      <section className="px-6 lg:px-8 mb-6">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-2 md:grid-cols-5 gap-3">
+          <KPI label="Health" value={latest?.health.toFixed(1) ?? "—"} sub="composite 0–100" colorVar="--primary" pulse />
+          <KPI
+            label="Δ vs first"
+            value={`${delta >= 0 ? "+" : ""}${delta.toFixed(1)}`}
+            sub="net since baseline"
+            colorVar={delta >= 0 ? "--good" : "--bad"}
+          />
+          <KPI label="Dips" value={String(annotations.length)} sub="health drops ≥ 3" colorVar="--warn" />
+          <KPI label="Files" value={String(latest?.total_files ?? 0)} sub={`${(latest?.total_loc ?? 0).toLocaleString()} LOC`} />
+          <KPI label="Risky owners" value={String(latest?.bus_factor_low ?? 0)} sub="bus factor ≤ 1" colorVar="--bad" />
+        </div>
+      </section>
+
+      {/* Time-series + selected commit */}
+      <section className="px-6 lg:px-8 mb-6">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 space-y-3">
+            <SectionHeader title="Health over time" hint={`${annotations.length} flagged · click any point to inspect`} />
+            <HealthChart series={series} annotations={annotations} selectedSha={selected} onSelect={setSelected} />
+            <SubscoreChart series={series} />
+          </div>
+          <div className="space-y-3">
+            <SectionHeader title="Selected commit" />
+            {selectedRow && <SelectedCommitCard row={selectedRow} prevSha={prevSha} />}
           </div>
         </div>
-        <HealthChart series={series} annotations={annotations} selectedSha={selected} onSelect={setSelected} />
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-3">
-          <h2 className="text-sm font-medium text-zinc-300">Subscores</h2>
-          <SubscoreChart series={series} />
-        </div>
-        <div className="space-y-3">
-          <h2 className="text-sm font-medium text-zinc-300">Selected commit</h2>
-          {selectedRow && (
-            <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-3 text-xs space-y-2">
-              <div className="font-mono text-zinc-400">{selectedRow.sha.slice(0, 7)}</div>
-              <div className="text-zinc-200">{selectedRow.message.split("\n")[0]}</div>
-              <div className="text-zinc-500">{selectedRow.author} · {new Date(selectedRow.ts * 1000).toLocaleString()}</div>
-              <div className="pt-2 border-t border-zinc-800 grid grid-cols-2 gap-x-2 gap-y-0.5">
-                <Stat label="Health" value={selectedRow.health.toFixed(1)} />
-                <Stat label="Files" value={String(selectedRow.total_files)} />
-                <Stat label="Drift" value={String(selectedRow.complexity_drift)} />
-                <Stat label="Tests" value={String(selectedRow.test_coverage)} />
-                <Stat label="Hotspot" value={String(selectedRow.hotspot_risk)} />
-                <Stat label="Rot" value={String(selectedRow.dependency_rot)} />
-              </div>
-              <div className="pt-2 border-t border-zinc-800">
-                <ExplainPanel sha={selectedRow.sha} prev={prevSha} />
-              </div>
+      {/* Tabs + content */}
+      <section className="px-6 lg:px-8 pb-12">
+        <div className="max-w-[1400px] mx-auto">
+          <div className="flex items-center justify-between gap-4 flex-wrap mb-3">
+            <div className="flex items-center gap-1 flex-wrap">
+              {TABS.map(([k, label, hint]) => (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  className={`tab-pill ${tab === k ? "active" : ""}`}
+                  title={hint}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
-      </section>
-
-      <section>
-        <div className="flex items-center gap-1 border-b border-zinc-800 mb-3">
-          {([
-            ["hotspots", "Hotspots"],
-            ["busfactor", "Bus factor"],
-            ["arch", "Architecture"],
-            ["predict", "Predict PR"],
-            ["graph", "Knowledge graph"],
-            ["diff", "Graph diff"],
-          ] as [TabKey, string][]).map(([k, label]) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`px-3 py-1.5 text-xs border-b-2 -mb-px ${tab === k ? "border-emerald-400 text-emerald-300" : "border-transparent text-zinc-400 hover:text-zinc-200"}`}
-            >
-              {label}
-            </button>
-          ))}
-          {tab === "diff" && (
-            <div className="ml-auto">
-              <CompareSelector series={series} value={compareWith} onChange={setCompareWith} />
+            <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
+              <span>{TABS.find(([k]) => k === tab)?.[2]}</span>
+              {tab === "diff" && <CompareSelector series={series} value={compareWith} onChange={setCompareWith} />}
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-4">
-          {tab === "hotspots" && <Hotspots data={hotspots} />}
-          {tab === "busfactor" && selected && <BusFactorPanel sha={selected} />}
-          {tab === "arch" && selected && <ArchPanel sha={selected} />}
-          {tab === "predict" && <PredictPanel />}
-          {tab === "graph" && selected && <GraphView sha={selected} />}
-          {tab === "diff" && compareWith && selected && <GraphDiff a={compareWith} b={selected} />}
+          <div className="card p-5">
+            {tab === "hotspots" && <Hotspots data={hotspots} />}
+            {tab === "busfactor" && selected && <BusFactorPanel sha={selected} />}
+            {tab === "arch" && selected && <ArchPanel sha={selected} />}
+            {tab === "predict" && <PredictPanel />}
+            {tab === "graph" && selected && <GraphView sha={selected} />}
+            {tab === "diff" && compareWith && selected && <GraphDiff a={compareWith} b={selected} />}
+          </div>
         </div>
       </section>
     </div>
   );
 }
 
-function KPI({ label, value, accent = "" }: { label: string; value: string; accent?: string }) {
+function SectionHeader({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800 rounded px-3 py-1.5">
-      <div className={`text-base font-semibold ${accent}`}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</div>
+    <div className="flex items-baseline justify-between">
+      <h2 className="text-xs font-medium tracking-wide uppercase text-[var(--text-muted)]">{title}</h2>
+      {hint && <span className="text-[11px] text-[var(--text-faint)]">{hint}</span>}
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function KPI({ label, value, sub, colorVar = "--text", pulse = false }: { label: string; value: string; sub?: string; colorVar?: string; pulse?: boolean }) {
   return (
-    <>
-      <span className="text-zinc-500">{label}</span>
-      <span className="text-right text-zinc-200">{value}</span>
-    </>
+    <div className="card card-hover p-4 relative overflow-hidden">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">{label}</div>
+      <div className="flex items-baseline gap-2 mt-1">
+        <span
+          className="text-2xl font-semibold tabular-nums tracking-tight"
+          style={{ color: `var(${colorVar})` }}
+        >
+          {value}
+        </span>
+        {pulse && <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] health-pulse" />}
+      </div>
+      {sub && <div className="text-[11px] text-[var(--text-faint)] mt-1">{sub}</div>}
+    </div>
+  );
+}
+
+function SelectedCommitCard({ row, prevSha }: { row: ScoreRow; prevSha: string | null }) {
+  const subs = [
+    { label: "complexity drift", value: row.complexity_drift, invert: true, color: "#fbbf24" },
+    { label: "test coverage",    value: row.test_coverage,    invert: false, color: "#34d399" },
+    { label: "hotspot risk",     value: row.hotspot_risk,     invert: true, color: "#fb7185" },
+    { label: "dependency rot",   value: row.dependency_rot,   invert: true, color: "#a78bfa" },
+    { label: "arch drift",       value: row.arch_drift ?? 0,  invert: true, color: "#67e8f9" },
+  ];
+  return (
+    <div className="card p-4 space-y-3 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-mono text-[11px] text-[var(--text-faint)]">{row.sha.slice(0, 7)}</div>
+          <div className="mt-1 text-[var(--text)] line-clamp-2">{row.message.split("\n")[0]}</div>
+          <div className="mt-1 text-[11px] text-[var(--text-muted)]">{row.author} · {new Date(row.ts * 1000).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Health</div>
+          <div className="text-2xl font-semibold tabular-nums" style={{ color: "var(--primary)" }}>{row.health.toFixed(1)}</div>
+        </div>
+      </div>
+
+      <div className="divider-glow" />
+
+      <div className="space-y-2">
+        {subs.map((s) => (
+          <div key={s.label}>
+            <div className="flex items-baseline justify-between text-[11px]">
+              <span className="text-[var(--text-muted)]">{s.label}</span>
+              <span className="font-mono tabular-nums" style={{ color: s.color }}>{s.value.toFixed(3)}</span>
+            </div>
+            <div className="score-track mt-1">
+              <div className="score-fill" style={{ width: `${Math.min(100, s.value * 100)}%`, background: s.color, opacity: 0.65 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="divider-glow" />
+      <ExplainPanel sha={row.sha} prev={prevSha} />
+    </div>
   );
 }
 
@@ -199,7 +273,7 @@ function CompareSelector({ series, value, onChange }: { series: ScoreRow[]; valu
     <select
       value={value || ""}
       onChange={(e) => onChange(e.target.value)}
-      className="text-[11px] bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-zinc-300"
+      className="text-[11px] bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] rounded-md px-2 py-1 text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/40"
     >
       {series.map((s) => (
         <option key={s.sha} value={s.sha}>
